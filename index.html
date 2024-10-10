@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code PromptPay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400&display=swap" rel="stylesheet">
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/128/825/825569.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #007bff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        form {
+            background: #ffffff; 
+            border-radius: 20px; 
+            padding: 15px; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%; 
+            max-width: 320px; 
+            text-align: center;
+            box-sizing: border-box; 
+        }
+        label {
+            font-weight: bold; 
+            margin: 10px 0;
+            display: block; 
+        }
+        input[type="number"], input[type="tel"] {
+            width: calc(100% - 24px); 
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        input[type="number"]:focus, input[type="tel"]:focus {
+            border-color: #0056b3;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); 
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover { 
+            background-color: #0056b3; 
+        }
+        #quickAmountButtons {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); 
+            gap: 5px; 
+        }
+        .quick-button {
+            background-color: #e9ecef;
+            color: #333;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .quick-button:hover {
+            background-color: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        #qrcode { 
+            margin-top: 20px; 
+            padding: 10px; 
+            background: #ffffff; 
+            border-radius: 5px; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); 
+            width: 100%; 
+            max-width: 320px;
+        }
+        img {
+            display: block;
+            margin: auto;
+            max-width: 100%;
+            height: auto;
+        }
+        #loading {
+            display: none;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        footer {
+            margin-top: auto;
+            padding: 10px 100px;
+            background-color: #000000;
+            color: #ffffff;
+        }
+        @media (max-width: 600px) {
+            form {
+                width: 90%; /* ให้ฟอร์มกว้าง 90% บนอุปกรณ์ที่มีขนาดเล็กกว่า 600px */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>ระบบสร้าง QR Code PromptPay</h1>
+    <p id="randomText" class="text-center my-2"></p>
+    
+    <form id="topupForm">
+        <label for="phoneNumber">เบอร์โทรศัพท์:</label>
+        <input type="tel" id="phoneNumber" required placeholder="กรอกเบอร์โทรศัพท์" pattern="[0-9]{10}">
+        
+        <label for="amount">จำนวนเงิน:</label>
+        <input type="number" id="amount" required placeholder="กรอกจำนวนเงิน" min="1">
+
+        <div id="quickAmountButtons">
+            <button type="button" class="quick-button" data-value="1">1</button>
+            <button type="button" class="quick-button" data-value="10">10</button>
+            <button type="button" class="quick-button" data-value="50">50</button>
+            <button type="button" class="quick-button" data-value="100">100</button>
+            <button type="button" class="quick-button" data-value="200">200</button>
+            <button type="button" class="quick-button" data-value="300">300</button>
+            <button type="button" class="quick-button" data-value="400">400</button>
+            <button type="button" class="quick-button" data-value="500">500</button>
+            <button type="button" class="quick-button" data-value="1000">1000</button>
+        </div>
+        <br>
+        <button type="submit">ตกลง</button>
+    </form>
+    <div id="qrcode"></div>
+
+    <div id="loading">กำลังโหลด QR Code...</div>
+    <br>
+    <footer class="text-center">
+        <p>© 2024 Sumett Ampornsak  All rights reserved</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.getElementById('topupForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const amount = document.getElementById('amount').value;
+
+            if (phoneNumber.length !== 10 || amount < 1) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ข้อมูลไม่ถูกต้อง',
+                    text: 'กรุณากรอกข้อมูลให้ถูกต้อง',
+                });
+                return;
+            }
+
+            const qrCodeImageUrl = `https://promptpay.io/${phoneNumber}/${amount}.png`;
+
+            // แสดงข้อความกำลังโหลด
+            $("#loading").show();
+            $("#qrcode").empty();
+
+            // แสดงภาพ QR Code โดยตรงจาก promptpay.io
+            const img = new Image();
+            img.src = qrCodeImageUrl;
+            img.onload = function() {
+                $("#qrcode").append(img);
+                $("#loading").hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'QR Code สร้างสำเร็จ!',
+                    text: 'QR Code ของคุณถูกสร้างเรียบร้อยแล้ว',
+                });
+            };
+            img.onerror = function() {
+                $("#qrcode").html("ไม่สามารถโหลด QR Code ได้ กรุณาลองใหม่");
+                $("#loading").hide();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถโหลด QR Code ได้ กรุณาลองใหม่',
+                });
+            };
+        });
+
+        $(document).ready(function() {
+            const originalText = "Develop By Sumett Ampornsak";
+
+            function typeText(text) {
+                let index = 0;
+                const speed = 50;
+                const interval = setInterval(() => {
+                    if (index < text.length) {
+                        $('#randomText').text(text.substring(0, index + 1));
+                        index++;
+                    } else {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            randomTyping();
+                        }, 2000);
+                    }
+                }, speed);
+            }
+
+            function randomTyping() {
+                const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                let randomText = "...";
+                let randomIndex = 0;
+                const typingSpeed = 100;
+                const interval = setInterval(() => {    
+                    if (randomIndex < 10) {
+                        randomText += characters.charAt(Math.floor(Math.random() * characters.length));
+                        $('#randomText').text(randomText);
+                        randomIndex++;
+                    } else {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            typeText(originalText);
+                        }, 0);
+                    }
+                }, typingSpeed);
+            }
+
+            // เพิ่ม event listener ให้ปุ่มจำนวนเงิน
+            $('.quick-button').on('click', function() {
+                const amountValue = $(this).data('value');
+                $('#amount').val(amountValue);
+            });
+
+            typeText(originalText); // เริ่มการพิมพ์ข้อความต้นฉบับ
+        }); // ปิด $(document).ready
+    </script>
+</body>
+</html>
